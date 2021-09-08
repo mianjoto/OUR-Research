@@ -1,3 +1,7 @@
+"""
+Depreciated
+"""
+
 us_state_number = {
     'Alabama': '1',
     'Alaska': '2',
