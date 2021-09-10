@@ -3,8 +3,9 @@ This repository contains code used for researching during Miguel Jover's Fall 20
 
 It is led and mentored by Dr. Minwoo Jake Lee, an assistant professor in the Department of Computer Science at the University of North Carolina Charlotte. Read more about him [here](https://webpages.uncc.edu/mlee173/).
 
-## Project Description
+### Project Description
 As the human cognitive load grows for interactions with AI, direct brain communication has emerged as an alternative solutionf or communication between humans and AI. THis short-term project aims to learn different classification methods and test them on colected EEG brain signal data for the detection of error-related potentials (ERPs).
+---
 
 ## Current Tasks
 - [ ] Learn NumPy 
