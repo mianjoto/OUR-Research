@@ -1,4 +1,6 @@
 import np_array_driver as ad
+from geopy.geocoders import Nominatim
+
 import numpy as np
 
 '''KNOWN ISSUES and GOALS: 
@@ -22,13 +24,14 @@ singapore_data = 'singapore-residents-by-ethnic-group-and-sex-end-june-annual' \
 
 
 def main():
-    data = ad.create_array_from_csv(covid_data)
-    ad.print_np_array(data)
-    print(f'{ad.get_length(covid_data)=}')
+    pass
+    # data = ad.create_array_from_csv(covid_data)
+    # ad.print_np_array(data)
+    # print(f'{ad.get_length(covid_data)=}')
 
 
 def test():
-    print(ad.ascii_to_str("671111101101019911610599117116"))
+    print()
 
 
 if __name__ == "__main__":
