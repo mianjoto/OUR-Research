@@ -1,8 +1,7 @@
 import csv
 import os
-from os.path import join
-from os.path import exists
 from sklearn.utils import Bunch
+import pickle
 
 import numpy as np
 import pandas as pd
@@ -15,7 +14,7 @@ from sklearn.neighbors import KNeighborsClassifier
 
 
 def main():
-    eeg_best_knn()
+    load_modified_eeg()
 
 
 def eeg_best_knn():
@@ -57,65 +56,42 @@ def load_data(filepath):
     return data, target
 
 
-def load_all_eeg():
-    # Instantiate the numpy array
-    feature_names = np.array(['labels', 'F4', 'F3', 'Fz', 'Cz',
-                              'timestamps'])
-    frame = None
-    filename = None
+def load_modified_eeg():
+    """This method loads some modified data that was generously provided to
+    me by Ben Poole, the original author of the EEG data
+    """
+    with open('BGSInt-1-ar.pkl', 'rb') as file:
+        file_dataset: dict = pickle.load(file)
+        sns.set()
 
-    # Get the desired data folder
-    data_dir = os.getcwd() + '\\data-v2\\data\\obstacle_avoidance\\observation'
+        # Unload data into individual dictionaries
+        dataset: np.ndarray = file_dataset.get('data')
+        labels: np.ndarray = file_dataset.get('labels')
+        event_ids = file_dataset.get('event_ids')
+        trial_indexes = file_dataset.get('trail_indexes')
+        tags = file_dataset.get('tags')
+        dataset_tags = tags.get('dataset')
+        subject_tags = tags.get('subject')
+        trial_tags = tags.get('trial')
+        channels = file_dataset.get('channels')
 
-    # Make a list of subject targets
-    s_targets = []
-    for i in range(1, 10):
-        s_targets.append("S{}".format(i))
+    shortened_data: np.ndarray = dataset[:, 0, :]  # 2D array of number of
+    # epochs and number of samples per epoch
 
-    # Make a list of trial targets
-    t_targets = []
-    for i in range(1, 10):
-        t_targets.append("trial-{}".format(i))
+    # Each row represents 1 epoch with the samples going along the row (
+    # x-axis) of the matrix
 
-    # Make an empty list of eeg csv directories to read later
-    eeg_dir_list = []
+    X = pd.DataFrame(shortened_data)
+    print(X)
+    y = pd.Categorical.from_codes(labels, event_ids)
+    y = pd.get_dummies(y, drop_first=False)
 
-    # Get the files in the data directory
-    for folder in os.listdir(data_dir):
-        # Get the S1-S9 folders
-        if any(folder == subject for subject in s_targets):
-            subject_dir = join(data_dir, folder) + '\\'
-            # Get the trial-1—trial-10 folders
-            for trial_folder in os.listdir(subject_dir):
-                # Get the csv file for each subject and trial and append it
-                # to a list
-                eeg_dir = subject_dir + trial_folder + \
-                          '\\filtered\\eeg.csv'
-                if exists(eeg_dir):
-                    eeg_dir_list.append(eeg_dir)
+    # TOOK FOREVER BUT IT"S DONE FOR NOW, I AM ABLE TO PLOT SOMETHING
 
-    # I know this is not what we're actually going to do, but let's put all
-    # the csvs in one big, fat csv to plot the data and see what it looks like
-    with open('compiled_data.csv', 'w') as csv_file:
-        print('in da loop :flushed:')
-        csv_file.write(str(feature_names))  # Write the header
-        for eeg_dir in eeg_dir_list:
-            # print(f'{eeg_dir=}')
-            with open(eeg_dir, 'r') as eeg_csv:
-                for line in eeg_csv:
-                    csv_file.write(line)
-                print(
-                    f'processed eeg csv at index {eeg_dir_list.index(eeg_dir)}')
-
-    """I'll work on this later"""
-
-    # return Bunch(data=data,
-    #              target=target,
-    #              frame=frame,
-    #              target_names=target_names,
-    #              DESCR=fdescr,
-    #              feature_names=feature_names,
-    #              filename=csv_filename)
+    sns.lineplot(
+        data=X.join(y, how='outer')
+    )
+    plt.show()
 
 
 def load_eeg(game='obstacle_avoidance', s_num=1, trial_num=1):
@@ -142,7 +118,6 @@ def load_eeg(game='obstacle_avoidance', s_num=1, trial_num=1):
                  DESCR=fdescr,
                  feature_names=feature_names,
                  filename=filename)
-
 
 
 def breast_cancer_best_knn():
