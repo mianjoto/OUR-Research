@@ -1,7 +1,57 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <module type="PYTHON_MODULE" version="4">
   <component name="NewModuleRootManager">
-    <content url="file://$MODULE_DIR$" />
+    <content url="file://$MODULE_DIR$">
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S2/trial-3/states" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S2/trial-4/filtered" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S2/trial-4/states" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S3/trial-7/log" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S3/trial-8/log" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S3/trial-9/states" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S5/trial-2/states" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S5/trial-3/log" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S5/trial-3/states" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S5/trial-4/log" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S5/trial-8/states" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S5/trial-9/filtered" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S5/trial-9/states" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S5/trial-10/filtered" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S6/trial-1/states" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S6/trial-2/states" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S6/trial-7/filtered" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S6/trial-9/filtered" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S6/trial-10/states" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S7/trial-1/log" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S7/trial-1/states" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S7/trial-5/filtered" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S7/trial-7/filtered" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S7/trial-8/log" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S7/trial-8/states" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S7/trial-9/log" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S7/trial-10/log" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S8/trial-2/log" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S8/trial-3/filtered" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S8/trial-5/filtered" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S8/trial-7/states" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S8/trial-8/states" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S8/trial-9/log" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S8/trial-10/log" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S9/trial-1/filtered" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S9/trial-3/filtered" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S9/trial-3/log" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S9/trial-6/filtered" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S9/trial-6/states" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S9/trial-7/states" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S9/trial-4" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S9/trial-5" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S9/trial-8" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S9/trial-9" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S1" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/observation/S4" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/obstacle_avoidance/outcome" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2/data/binary_goal_search" />
+      <excludeFolder url="file://$MODULE_DIR$/data-v2" />
+    </content>
     <orderEntry type="jdk" jdkName="Python 3.8 (base)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
