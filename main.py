@@ -14,7 +14,8 @@ from sklearn.neighbors import KNeighborsClassifier
 
 
 def main():
-    load_modified_eeg()
+    data, labels, event_ids = load_eeg_pkl()
+    plot_eeg(data, labels, event_ids)
 
 
 def eeg_best_knn():
@@ -56,10 +57,12 @@ def load_data(filepath):
     return data, target
 
 
-def load_modified_eeg():
+def load_eeg_pkl(load_all=False):
     """This method loads some modified data that was generously provided to
     me by Ben Poole, the original author of the EEG data
     """
+    print('Loading modified EEG data...')
+
     with open('BGSInt-1-ar.pkl', 'rb') as file:
         file_dataset: dict = pickle.load(file)
         sns.set()
@@ -75,22 +78,50 @@ def load_modified_eeg():
         trial_tags = tags.get('trial')
         channels = file_dataset.get('channels')
 
-    shortened_data: np.ndarray = dataset[:, 0, :]  # 2D array of number of
-    # epochs and number of samples per epoch
+    # 2nd Dimension = [-2.48745072, -7.95464986, -8.54984763, -3.6117462 ]
 
-    # Each row represents 1 epoch with the samples going along the row (
-    # x-axis) of the matrix
+    # 2D array of number of epochs and number of samples per epoch
+    epochs_with_samples: np.ndarray = dataset[:, 0, :]
 
-    X = pd.DataFrame(shortened_data)
+    # Only get the mean of the epochs that have an associated ErrP value
+    ern_occurrences = np.where(labels == 1)[0]
+    ern_epochs: np.ndarray = epochs_with_samples[ern_occurrences, :]
+
+    # Calculate the mean of each column
+    row_index, column_index = ern_epochs.shape
+    print(ern_epochs.shape)
+    for i in np.arange(row_index):
+        # print(f'{i=}')
+
+        for j in np.arange(column_index):
+            # print(f'{j=}')
+            mean = np.mean(ern_epochs, axis=j)
+            print(f'{mean=}, {mean.shape=}')
+            ern_epochs[:, j] = mean
+
+
+
+    print('Loaded EEG data')
+
+    if load_all is True:
+        return dataset, ern_epochs, labels, event_ids, trial_tags, trial_indexes, \
+               dataset_tags, subject_tags, channels
+
+    return ern_epochs, labels, event_ids
+
+
+def plot_eeg(ern_epochs: np.ndarray, labels, event_ids):
+    print('Preparing the EEG data to plot...')
+    X = pd.DataFrame(ern_epochs)
+    # y = pd.Categorical.from_codes(labels, event_ids)
+    # y = pd.get_dummies(y, drop_first=False)
     print(X)
-    y = pd.Categorical.from_codes(labels, event_ids)
-    y = pd.get_dummies(y, drop_first=False)
-
-    # TOOK FOREVER BUT IT"S DONE FOR NOW, I AM ABLE TO PLOT SOMETHING
-
+    print('Plotting EEG data...')
     sns.lineplot(
-        data=X.join(y, how='outer')
+        dashes=False,
+        data=X
     )
+    print('Displayed EEG data')
     plt.show()
 
 
