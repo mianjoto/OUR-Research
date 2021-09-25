@@ -1,6 +1,10 @@
+import csv
+import os
+from sklearn.utils import Bunch
+import pickle
+
 import numpy as np
 import pandas as pd
-# from sklearn.datasets import load_wine
 import seaborn as sns
 from matplotlib import pyplot as plt
 from sklearn.datasets import load_breast_cancer
@@ -9,39 +13,145 @@ from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 
 
-# 2:39 pm — I'm going to play with some datasets from the scikit-learn
-# package
-# 3:23 pm — Done experimenting with the diabetes dataset, moving on
-# to the wine dataset to experiment with classification
-# 3:56 pm — It turns # out that you need to use decision trees instead of a
-# typical classification model... so I should instead use the diabetes
-# dataset again
-# 4:45 pm — # Multiple issues: I'm really not good at assigning the variables
-# and # plotting the from the datasets. I don't know how to do it. Reusing the
-# code # from the tutorial does not work due to the different nature of the
-# dataset. Plus, I wish to get the raw diabetes data instead of the data
-# that has its stdev played with.
-#
-# Going to take a break on this and work on pushing this work to the new git
-# branch called 'working'
-
-# 9/11/2021 3:01 pm: Going to try to work on learning the datasets, this time
-# with breast cancer information to try and classify as benign or malignant
-# 4:04 pm: Giving up on trying to analyze the mean area / smoothness
-# and just use the data that was provided in yesterday's practice
-# 5:03 pm: I made a function to try to find the n_numbers that yields the
-# least number of false negatives/positives. Right now, I am debugging
-# due to missing types and mismatching weights
-# 5:38 pm: The function find_best_n_neighbors() works and is able to tell the
-# best number of neighbors to use for a particular data set using
-# KNNClassifier. Now, I am going to make isolate the code inside the for loop
-# so that you can find the number of false values for a particular n (which
-# will be looped through multiple times)
-# 7:52 pm: It's been gruelling, but it's finally done. It can now find the
-# best k neighbor value and plot the graph. I don't fully understand
-# everything quite yet but I'll learn more with time.
-
 def main():
+    data, labels, event_ids = load_eeg_pkl()
+    plot_eeg(data, labels, event_ids)
+
+
+def eeg_best_knn():
+    sns.set()
+
+    eeg = load_eeg()
+    print(f'{eeg.data=}, {len(eeg.data)=}')
+    X = pd.DataFrame(eeg.data, columns=eeg.feature_names)
+    X_test_categories = ['F4', 'timestamps']
+    X = X[X_test_categories]  # Simplify the columns
+    y = pd.Categorical.from_codes(eeg.target,
+                                  eeg.target_names)
+    y = pd.get_dummies(y, drop_first=True)  # 1 is benign and 0 is malignant
+
+    # Split the data
+    X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=1)
+
+    # Find the best number of neighbors that yields the least false values
+    plot_best_n_from_range(X_train, X_test_categories[0], X_test_categories[1],
+                           X_test, y_train, y_test, 1, 100)
+
+
+def load_data(filepath):
+    """Taken and modified from the sklearn.datasets module. I can't use
+    load_data() by itself since it is not init'd
+    """
+    with open(filepath) as csv_file:
+        data_file = csv.reader(csv_file)
+        temp: list = next(data_file)
+        n_samples = len(temp)
+        n_features = sum(1 for _ in csv_file)
+        data = np.empty((n_samples, n_features))
+        target = np.empty((n_samples,), dtype=int)
+
+        for i, ir in enumerate(data_file):
+            data[i] = np.asarray(ir[:-1], dtype=np.float64)
+            target[i] = np.asarray(ir[-1], dtype=int)
+
+    return data, target
+
+
+def load_eeg_pkl(load_all=False):
+    """This method loads some modified data that was generously provided to
+    me by Ben Poole, the original author of the EEG data
+    """
+    print('Loading modified EEG data...')
+
+    with open('BGSInt-1-ar.pkl', 'rb') as file:
+        file_dataset: dict = pickle.load(file)
+        sns.set()
+
+        # Unload data into individual dictionaries
+        dataset: np.ndarray = file_dataset.get('data')
+        labels: np.ndarray = file_dataset.get('labels')
+        event_ids = file_dataset.get('event_ids')
+        trial_indexes = file_dataset.get('trail_indexes')
+        tags = file_dataset.get('tags')
+        dataset_tags = tags.get('dataset')
+        subject_tags = tags.get('subject')
+        trial_tags = tags.get('trial')
+        channels = file_dataset.get('channels')
+
+    # 2nd Dimension = [-2.48745072, -7.95464986, -8.54984763, -3.6117462 ]
+
+    # 2D array of number of epochs and number of samples per epoch
+    epochs_with_samples: np.ndarray = dataset[:, 0, :]
+
+    # Only get the mean of the epochs that have an associated ErrP value
+    ern_occurrences = np.where(labels == 1)[0]
+    ern_epochs: np.ndarray = epochs_with_samples[ern_occurrences, :]
+
+    # Calculate the mean of each column
+    row_index, column_index = ern_epochs.shape
+    print(ern_epochs.shape)
+    for i in np.arange(row_index):
+        # print(f'{i=}')
+
+        for j in np.arange(column_index):
+            # print(f'{j=}')
+            mean = np.mean(ern_epochs, axis=j)
+            print(f'{mean=}, {mean.shape=}')
+            ern_epochs[:, j] = mean
+
+
+
+    print('Loaded EEG data')
+
+    if load_all is True:
+        return dataset, ern_epochs, labels, event_ids, trial_tags, trial_indexes, \
+               dataset_tags, subject_tags, channels
+
+    return ern_epochs, labels, event_ids
+
+
+def plot_eeg(ern_epochs: np.ndarray, labels, event_ids):
+    print('Preparing the EEG data to plot...')
+    X = pd.DataFrame(ern_epochs)
+    # y = pd.Categorical.from_codes(labels, event_ids)
+    # y = pd.get_dummies(y, drop_first=False)
+    print(X)
+    print('Plotting EEG data...')
+    sns.lineplot(
+        dashes=False,
+        data=X
+    )
+    print('Displayed EEG data')
+    plt.show()
+
+
+def load_eeg(game='obstacle_avoidance', s_num=1, trial_num=1):
+    """Return a Bunch that can be used to build a data"""
+    if game not in ['obstacle_avoidance', 'binary_goal_search']:
+        raise ValueError(f'No such game {game} exists')
+
+    if s_num > 9 or s_num < 0:
+        raise ValueError(f'No such subject S{s_num} exists')
+
+    # Instantiate the numpy array
+    feature_names = np.array(['labels', 'F4', 'F3', 'Fz', 'Cz',
+                              'timestamps'])
+    frame = None
+    filename = os.getcwd() + f'\\data-v2\\data\\{game}\\observation\\S' \
+                             f'{s_num}\\trial-{trial_num}\\filtered\\eeg.csv'
+    fdescr = f'EEG data from S{s_num}, trial-{trial_num}'
+
+    data, target = load_data(filename)
+
+    return Bunch(data=data,
+                 target=target,
+                 frame=frame,
+                 DESCR=fdescr,
+                 feature_names=feature_names,
+                 filename=filename)
+
+
+def breast_cancer_best_knn():
     sns.set()
 
     breast_cancer = load_breast_cancer()
@@ -111,8 +221,7 @@ def find_best_n_from_dict(dict_of_knn_results: dict):
     return best_n
 
 
-def plot_best_n(X_test, X_test_category1, X_test_category2, y_pred,
-                n: int, metric='euclidean'):
+def plot_best_n(X_test, X_test_category1, X_test_category2, y_pred):
     plt.scatter(
         X_test[X_test_category1],
         X_test[X_test_category2],
