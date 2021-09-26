@@ -1,5 +1,11 @@
 import numpy as np
+
 from color_print import ColorPrint as cp
+
+
+def combine_tuple_values(t: tuple):
+    return sum(list(t))
+
 
 
 def get_length(filepath):
