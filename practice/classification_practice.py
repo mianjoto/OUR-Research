@@ -101,7 +101,7 @@ def k_nearest_neighbors():
         cmap='coolwarm',
         alpha=0.7
     )
-    # plt.show()
+    plt.show()
 
     print(confusion_matrix(y_test, y_prediction))
 
@@ -182,3 +182,4 @@ def support_vector_machines():
     sub.set_title(titles)
 
     plt.show()
+support_vector_machines()
