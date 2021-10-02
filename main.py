@@ -6,15 +6,16 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
-from numpy import float64
+from numpy import int16
 from sklearn import svm, metrics
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
 from sklearn.svm import SVC
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import StratifiedKFold
 
 
 def main():
-    ern_avg, non_ern_avg, labels, channels = load_eeg_pkl()
+    ern_avg, non_ern_avg, dataset, labels, event_ids, channels = load_eeg_pkl()
 
     # Plot the data
     print('Preparing the EEG data to plot...')
@@ -25,8 +26,8 @@ def main():
     # Assign a DataFrame to the passed datas
     X1 = pd.DataFrame(ern_avg.T, columns=channels)
     X2 = pd.DataFrame(non_ern_avg.T, columns=channels)
+    X3 = pd.DataFrame(dataset[:, :, 1], columns=channels)
 
-    print('Plotting EEG data...')
     # ErrP data
     plt.figure(1)
     sns.lineplot(data=X1, dashes=False)
@@ -41,8 +42,34 @@ def main():
     plt.xlabel(f'Non-{xlabel}')
     plt.ylabel(ylabel)
 
-    print('Displayed EEG data')
-    plt.show()
+    # All data
+    plt.figure(3)
+    sns.lineplot(data=X3, dashes=False)
+    plt.title(f'Total {title}')
+    plt.xlabel(f'All {xlabel}')
+    plt.ylabel(ylabel)
+
+    # plt.show()
+
+    # Train the classifier
+    accuracy_list = []
+    classifier = svm.SVC(kernel='rbf', C=4)
+    skf = StratifiedKFold(n_splits=5, random_state=None, shuffle=True)
+    y = pd.DataFrame(labels)  # 1D nparray of 1s and 0s to indicate ErrPs
+
+    for train_index, test_index in skf.split(X3, y):
+        print("TRAIN:", train_index, "TEST:", test_index)
+        X_train, X_test = X3.iloc[train_index], X3.iloc[test_index]
+        y_train, y_test = y.iloc[train_index], y.iloc[test_index]
+
+        classifier.fit(X_train, y_train)
+        y_pred = classifier.predict(X_train)
+        acc = accuracy_score(y_pred, y_test)
+        accuracy_list.append(acc)
+
+    print(f'{accuracy_list=}')
+    avg_acc = np.mean(accuracy_list)
+    print(f'{avg_acc=}')
 
 
 def load_eeg_pkl(filepath: str = None, return_all: bool = False):
@@ -76,19 +103,32 @@ def load_eeg_pkl(filepath: str = None, return_all: bool = False):
     ern_occurrences: np.ndarray = np.where(labels == 1)[0]
     non_ern_occurrences: np.ndarray = np.where(labels == 0)[0]
 
+    # Store a labels df from a 2D, (1013, 2) ndarray
+    total_rows = ern_occurrences.shape[0] + non_ern_occurrences.shape[0]
+    labels_array = np.zeros((total_rows, 2), dtype=int16)
+    for row in np.arange(total_rows):
+        if row in ern_occurrences:
+            labels_array[row, 1] = 1
+        else:
+            labels_array[row, 0] = 1
+
+    labels_df: pd.DataFrame = pd.DataFrame(labels_array, columns=event_ids)
+
     # Get array of the epochs that DO and DO NOT have an associated ErrP value
     ern_epochs = dataset[ern_occurrences]
     non_ern_epochs = dataset[non_ern_occurrences]
 
-    # Get average across all samples that DO and DO NOT have associated ERN
+    # Get average across all samples that have and do not have associated ERN
+    # plus original dataset
     ern_epochs_avg = np.mean(ern_epochs, axis=0)
     non_ern_epochs_avg = np.mean(non_ern_epochs, axis=0)
 
     if return_all:
         return dataset, ern_epochs, ern_epochs_avg, non_ern_epochs, \
-               non_ern_epochs_avg, labels, event_ids, trial_tags, trial_indexes, \
+               non_ern_epochs_avg, labels, labels_df, event_ids, trial_tags, \
+               trial_indexes, \
                dataset_tags, subject_tags, channels
-    return ern_epochs_avg, non_ern_epochs_avg, labels, channels
+    return ern_epochs_avg, non_ern_epochs_avg, dataset, labels, event_ids, channels
 
 
 def find_best_accuracy(target_acc: float, epoch_all_channels, channels,
@@ -156,8 +196,6 @@ def train_svm(train_statically: bool, epoch_set, labels, kernel: str,
     # Compare the accuracy of the prediction to an actual variable
     accuracy = metrics.accuracy_score(y_test, y_pred)
     return accuracy, y_pred
-
-
 
 
 if __name__ == "__main__":
