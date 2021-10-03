@@ -8,9 +8,7 @@ import seaborn as sns
 from matplotlib import pyplot as plt
 from numpy import int16
 from sklearn import svm, metrics
-from sklearn.svm import SVC
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, roc_curve, auc
 from sklearn.model_selection import StratifiedKFold
 
 
@@ -57,19 +55,54 @@ def main():
     skf = StratifiedKFold(n_splits=5, random_state=None, shuffle=True)
     y = pd.DataFrame(labels)  # 1D nparray of 1s and 0s to indicate ErrPs
 
+    # Initialize lists
+    y_preds = []
+    accs = []
+    y_preds_svm = []
+    fprs = []
+    tprs = []
+    thresholds = []
     for train_index, test_index in skf.split(X3, y):
-        print("TRAIN:", train_index, "TEST:", test_index)
         X_train, X_test = X3.iloc[train_index], X3.iloc[test_index]
         y_train, y_test = y.iloc[train_index], y.iloc[test_index]
 
+        # Fit the data to the classifier
         classifier.fit(X_train, y_train)
-        y_pred = classifier.predict(X_train)
-        acc = accuracy_score(y_pred, y_test)
-        accuracy_list.append(acc)
+
+        # Get the prediction and store the accuracy in a list
+        y_pred = classifier.predict(X_test)
+        # acc = accuracy_score(y_pred, y_test)
+        # accuracy_list.append(acc)
+
+        # Get the distance from the prediction is from the classification plane
+        y_pred_svm = classifier.decision_function(X_test)
+
+        fpr, tpr, threshold = roc_curve(y_test, y_pred_svm)
+        area_under_curve = auc(fpr, tpr)
+        
+
+
+        area_under_curves.append(roc_auc)
 
     print(f'{accuracy_list=}')
     avg_acc = np.mean(accuracy_list)
     print(f'{avg_acc=}')
+
+    # Get the means of the fp's and tp's and auc's
+    auc_mean = np.mean(area_under_curves)
+    fpr_mean = np.mean(fp_rates)
+    tpr_mean = np.mean(tp_rates)
+
+    plt.figure(4)
+    plt.title('Receiver Operating Characteristic')
+    plt.plot(fp_rates, tp_rates, 'b', label='AUC = %0.2f' % auc_mean)
+    plt.legend(loc='lower right')
+    plt.plot([0, 1], [0, 1], 'r--')
+    plt.xlim([0, 1])
+    plt.ylim([0, 1])
+    plt.ylabel('True Positive Rate')
+    plt.xlabel('False Positive Rate')
+    plt.show()
 
 
 def load_eeg_pkl(filepath: str = None, return_all: bool = False):
@@ -143,7 +176,7 @@ def find_best_accuracy(target_acc: float, epoch_all_channels, channels,
     for i in np.arange(4):
         channels_dict.update({i: channels[i]})
 
-    # Store the y prediction for each model
+    # Store the y predic tion for each model
     y_pred_list = []
     index = 0
     # Iterate through each set for each channel
