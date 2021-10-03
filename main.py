@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
-from numpy import int16
+from numpy import int16, float64
 from sklearn import svm, metrics
 from sklearn.metrics import accuracy_score, roc_curve, auc
 from sklearn.model_selection import StratifiedKFold
@@ -49,19 +49,23 @@ def main():
 
     # plt.show()
 
-    # Train the classifier
-    accuracy_list = []
+    # Initialize the classifier
     classifier = svm.SVC(kernel='rbf', C=4)
-    skf = StratifiedKFold(n_splits=5, random_state=None, shuffle=True)
+    skf = StratifiedKFold(n_splits=5)
     y = pd.DataFrame(labels)  # 1D nparray of 1s and 0s to indicate ErrPs
 
     # Initialize lists
-    y_preds = []
-    accs = []
+    y_preds = []  # Not used, may be deleted soon
+    accs = []  # Not used, may be deleted soon
     y_preds_svm = []
+    aucs = []
+    aucs_svm = []
     fprs = []
     tprs = []
-    thresholds = []
+    fprs_svm = []
+    tprs_svm = []
+    thresholds = []  # Not used, may be deleted soon
+
     for train_index, test_index in skf.split(X3, y):
         X_train, X_test = X3.iloc[train_index], X3.iloc[test_index]
         y_train, y_test = y.iloc[train_index], y.iloc[test_index]
@@ -71,37 +75,57 @@ def main():
 
         # Get the prediction and store the accuracy in a list
         y_pred = classifier.predict(X_test)
-        # acc = accuracy_score(y_pred, y_test)
-        # accuracy_list.append(acc)
+        acc = accuracy_score(y_pred, y_test)
+        accs.append(acc)
 
-        # Get the distance from the prediction is from the classification plane
+        # Get the distance from the prediction to the classification plane
         y_pred_svm = classifier.decision_function(X_test)
+        y_preds_svm.append(y_pred_svm)
 
+        # Get ROC data and append the mean to a list
+        fpr_svm, tpr_svm, threshold = roc_curve(y_test, y_pred)
+        area_under_curve_svm = auc(fpr_svm, tpr_svm)
+        fprs_svm.append(np.mean(fpr_svm))
+        tprs_svm.append(np.mean(tpr_svm))
+        thresholds.append(threshold)
+        aucs_svm.append(area_under_curve_svm)
+
+        # Get ROC data using svm prediction and append the mean to a list
         fpr, tpr, threshold = roc_curve(y_test, y_pred_svm)
         area_under_curve = auc(fpr, tpr)
-        
+        fprs.append(np.mean(fpr))
+        tprs.append(np.mean(tpr))
+        thresholds.append(threshold)
+        aucs.append(area_under_curve)
 
+    # Get the means of the ROC data
+    mean_auc = np.array(aucs).mean()
+    mean_auc_svm = np.array(aucs_svm).mean()
+    mean_fpr = np.mean(fprs)
+    mean_tpr = np.mean(tprs)
+    mean_fpr_svm = np.array(fprs_svm).mean()
+    mean_tpr_svm = np.array(tprs_svm).mean()
 
-        area_under_curves.append(roc_auc)
+    # Print mean accuracy
+    print(f'{np.mean(accs)=}')
 
-    print(f'{accuracy_list=}')
-    avg_acc = np.mean(accuracy_list)
-    print(f'{avg_acc=}')
+    # Make a new matplotlib figure and plot information
+    plt.figure(4, dpi=100)
 
-    # Get the means of the fp's and tp's and auc's
-    auc_mean = np.mean(area_under_curves)
-    fpr_mean = np.mean(fp_rates)
-    tpr_mean = np.mean(tp_rates)
+    plt.plot(mean_fpr_svm, mean_tpr_svm, linestyle='-', label='SVM (auc = '
+                                                              '%0.3f' % mean_auc_svm)
+    plt.plot(mean_fpr, mean_tpr, marker='.', label='Logistic (auc = %0.3f)' %
+                                                   mean_auc)
 
-    plt.figure(4)
+    # Decorate the figure
     plt.title('Receiver Operating Characteristic')
-    plt.plot(fp_rates, tp_rates, 'b', label='AUC = %0.2f' % auc_mean)
-    plt.legend(loc='lower right')
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
     plt.plot([0, 1], [0, 1], 'r--')
     plt.xlim([0, 1])
     plt.ylim([0, 1])
-    plt.ylabel('True Positive Rate')
-    plt.xlabel('False Positive Rate')
+    plt.legend(loc='lower right')
+
     plt.show()
 
 
