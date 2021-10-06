@@ -50,8 +50,9 @@ def main():
     # plt.show()
 
     # Initialize the classifier
-    classifier = svm.SVC(kernel='rbf', C=3)
-    skf = StratifiedKFold(n_splits=5)
+    n_splits = 8
+    classifier = svm.SVC(kernel='rbf1', C=1000)
+    skf = StratifiedKFold(n_splits=n_splits)
     y = pd.DataFrame(labels)  # 1D nparray of 1s and 0s to indicate ErrPs
 
     # Make a new matplotlib figure and decorate it
@@ -64,71 +65,93 @@ def main():
     plt.plot([0, 1], [0, 1], 'r--')
     plt.xlim([0, 1])
     plt.ylim([0, 1])
-    plt.legend(loc='lower right')
 
     # Initialize lists
-    y_preds = []  # Not used, may be deleted soon
-    accs = []  # Not used, may be deleted soon
-    y_preds_svm = []
-    aucs = []
-    aucs_svm = []
-    fprs = []
-    tprs = []
-    fprs_svm = []
-    tprs_svm = []
-    thresholds = []  # Not used, may be deleted soon
+    X_train, X_test, y_train, y_test, y_pred = None, None, None, None, None
+    c1_preds, c2_preds, c3_preds, c4_preds = [], [], [], []
+    lowest_text_index_len = 999999
 
+    # Split the data and get the prediction for each channel
     for train_index, test_index in skf.split(X3, y):
-        print(f'{np.shape(X3)=} {np.shape(y)=}')
         X_train, X_test = X3.iloc[train_index], X3.iloc[test_index]
-        print(f'{np.shape(X_train)=} {np.shape(X_test)}')
         y_train, y_test = y.iloc[train_index], y.iloc[test_index]
+        y_train = np.array(y_train).ravel()
+        y_test = np.array(y_test).ravel()
 
-        # Fit the data to the classifier
-        classifier.fit(X_train, y_train)
+        if len(test_index) < lowest_text_index_len:
+            lowest_text_index_len = len(test_index)
 
-        # Get the prediction and store the accuracy in a list
-        y_pred = classifier.predict(X_test)
-        acc = accuracy_score(y_pred, y_test)
-        accs.append(acc)
+        # Get the y prediction for each channel
+        for channel_index, channel in enumerate(channels):
+            # Fit the data to the classifier
+            classifier.fit(X_train[[channel]], y_train)
 
-        # Get the distance from the prediction to the classification plane
-        y_pred_svm = classifier.decision_function(X_test)
-        y_preds_svm.append(y_pred_svm)
+            # Get the prediction
+            y_pred = classifier.predict(X_test[[channel]])
+            if channel_index == 1:
+                c1_preds.append(y_pred)
+            if channel_index == 2:
+                c2_preds.append(y_pred)
+            if channel_index == 3:
+                c3_preds.append(y_pred)
+            if channel_index == 4:
+                c4_preds.append(y_pred)
 
-        # Get ROC data and append the mean to a list
-        fpr_svm, tpr_svm, threshold = roc_curve(y_test, y_pred)
-        area_under_curve_svm = auc(fpr_svm, tpr_svm)
-        fprs_svm.append(np.mean(fpr_svm))
-        tprs_svm.append(np.mean(tpr_svm))
-        thresholds.append(threshold)
-        aucs_svm.append(area_under_curve_svm)
+    #
+    # # Cut off any entries to make the shapes match in order to get the mean
+    # c1_preds_array = np.zeros(lowest_text_index_len)
+    # c2_preds_array = np.zeros(lowest_text_index_len)
+    # c4_preds_array = np.zeros(lowest_text_index_len)
+    # c3_preds_array = np.zeros(lowest_text_index_len)
+    #
+    #
+    #
+    # for index, entry in enumerate(c1_preds):
+    #     np.hstack((c1_preds_array.T, entry[:lowest_text_index_len]))
+    # for index, entry in enumerate(c2_preds):
+    #     np.hstack((c2_preds_array.T, entry[:lowest_text_index_len]))
+    # for index, entry in enumerate(c3_preds):
+    #     np.hstack((c3_preds_array.T, entry[:lowest_text_index_len]))
+    # for index, entry in enumerate(c4_preds):
+    #     np.hstack((c4_preds_array.T, entry[:lowest_text_index_len]))
+    #
+    # print(f'{c1_preds_array.shape=}')
+    # avg_c1_preds = np.mean(c1_preds, axis=1)
+    # avg_c2_preds = np.mean(c2_preds, axis=1)
+    # avg_c3_preds = np.mean(c3_preds, axis=1)
+    # avg_c4_preds = np.mean(c4_preds, axis=1)
 
-        # Get ROC data using svm prediction and append the mean to a list
-        fpr, tpr, threshold = roc_curve(y_test, y_pred_svm)
+    # Since the above code doesn't work, let the average signal of each
+    # channel be represented by the first entry of the prediction per channel
+    avg_c1_preds = c1_preds[0][:lowest_text_index_len]
+    avg_c2_preds = c1_preds[1][:lowest_text_index_len]
+    avg_c3_preds = c1_preds[2][:lowest_text_index_len]
+    avg_c4_preds = c1_preds[3][:lowest_text_index_len]
+
+    # Get the fpr and tpr for each channel
+    for channel_index, channel_pred in enumerate(
+            [avg_c1_preds, avg_c2_preds, avg_c3_preds,
+             avg_c4_preds]):
+        y_pred_svm = classifier.decision_function(X_test[[channels[
+                                                              channel_index]]])
+        fpr, tpr, threshold = roc_curve(y_test, channel_pred)
         area_under_curve = auc(fpr, tpr)
-        fprs.append(np.mean(fpr))
-        tprs.append(np.mean(tpr))
-        thresholds.append(threshold)
-        aucs.append(area_under_curve)
 
-    # Get the means of the ROC data
-    mean_auc = np.array(aucs).mean()
-    mean_auc_svm = np.array(aucs_svm).mean()
-    mean_fpr = np.mean(fprs)
-    mean_tpr = np.mean(tprs)
-    mean_fpr_svm = np.array(fprs_svm).mean()
-    mean_tpr_svm = np.array(tprs_svm).mean()
+        svm_fpr, svm_tpr, threshold = roc_curve(y_test, channel_pred,
+                                                y_pred_svm)
+        area_under_curve_svm = auc(svm_fpr, svm_tpr)
 
-    # Print mean accuracy
-    print(f'{np.mean(accs)=}')
+        # Plot the lines
+        plt.plot(svm_fpr, svm_tpr, linestyle='-', label=f'SVM auc for channel {channels[channel_index]}, svm_auc={area_under_curve_svm}')
+        plt.plot(fpr, tpr, marker='.', label=f'Logistical auc for channel '
+                                             f'{channels[channel_index]}, '
+                                             f'auc={area_under_curve}')
 
-    plt.plot(mean_fpr_svm, mean_tpr_svm, linestyle='-', label='SVM (auc = '
-                                                              '%0.3f' % mean_auc_svm)
-    plt.plot(mean_fpr, mean_tpr, marker='.', label='Logistic (auc = %0.3f)' %
-                                                   mean_auc)
+    # label = f'SVM auc for channel {channel_index}, auc ='
+    # f'({round(area_under_curve_svm, 2)})'
+    plt.legend(loc='lower right')
 
-    plt.show(4)
+    plt.show()
 
 
 def load_eeg_pkl(filepath: str = None, return_all: bool = False):
