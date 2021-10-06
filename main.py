@@ -50,9 +50,21 @@ def main():
     # plt.show()
 
     # Initialize the classifier
-    classifier = svm.SVC(kernel='rbf', C=4)
+    classifier = svm.SVC(kernel='rbf', C=3)
     skf = StratifiedKFold(n_splits=5)
     y = pd.DataFrame(labels)  # 1D nparray of 1s and 0s to indicate ErrPs
+
+    # Make a new matplotlib figure and decorate it
+    plt.figure(4, dpi=100)
+
+    # Decorate the figure
+    plt.title('Receiver Operating Characteristic')
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.plot([0, 1], [0, 1], 'r--')
+    plt.xlim([0, 1])
+    plt.ylim([0, 1])
+    plt.legend(loc='lower right')
 
     # Initialize lists
     y_preds = []  # Not used, may be deleted soon
@@ -67,7 +79,9 @@ def main():
     thresholds = []  # Not used, may be deleted soon
 
     for train_index, test_index in skf.split(X3, y):
+        print(f'{np.shape(X3)=} {np.shape(y)=}')
         X_train, X_test = X3.iloc[train_index], X3.iloc[test_index]
+        print(f'{np.shape(X_train)=} {np.shape(X_test)}')
         y_train, y_test = y.iloc[train_index], y.iloc[test_index]
 
         # Fit the data to the classifier
@@ -109,24 +123,12 @@ def main():
     # Print mean accuracy
     print(f'{np.mean(accs)=}')
 
-    # Make a new matplotlib figure and plot information
-    plt.figure(4, dpi=100)
-
     plt.plot(mean_fpr_svm, mean_tpr_svm, linestyle='-', label='SVM (auc = '
                                                               '%0.3f' % mean_auc_svm)
     plt.plot(mean_fpr, mean_tpr, marker='.', label='Logistic (auc = %0.3f)' %
                                                    mean_auc)
 
-    # Decorate the figure
-    plt.title('Receiver Operating Characteristic')
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-    plt.plot([0, 1], [0, 1], 'r--')
-    plt.xlim([0, 1])
-    plt.ylim([0, 1])
-    plt.legend(loc='lower right')
-
-    plt.show()
+    plt.show(4)
 
 
 def load_eeg_pkl(filepath: str = None, return_all: bool = False):
