@@ -6,14 +6,17 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
-from numpy import int16, float64
+from numpy import int16
 from sklearn import svm, metrics
-from sklearn.metrics import accuracy_score, roc_curve, auc
+from sklearn.metrics import roc_curve, auc, accuracy_score, RocCurveDisplay
 from sklearn.model_selection import StratifiedKFold
 
 
 def main():
     ern_avg, non_ern_avg, dataset, labels, event_ids, channels = load_eeg_pkl()
+
+    chnl, chnl_idx = channels[-1], (len(channels) - 1)  # The channel we will
+    # observe
 
     # Plot the data
     print('Preparing the EEG data to plot...')
@@ -24,7 +27,7 @@ def main():
     # Assign a DataFrame to the passed datas
     X1 = pd.DataFrame(ern_avg.T, columns=channels)
     X2 = pd.DataFrame(non_ern_avg.T, columns=channels)
-    X3 = pd.DataFrame(dataset[:, :, 1], columns=channels)
+    X3 = pd.DataFrame(dataset[:, chnl_idx, :])
 
     # ErrP data
     plt.figure(1)
@@ -50,12 +53,12 @@ def main():
     # plt.show()
 
     # Initialize the classifier
-    n_splits = 8
-    classifier = svm.SVC(kernel='rbf1', C=1000)
+    n_splits = 5
+    clf = svm.SVC(kernel='rbf', C=5)
     skf = StratifiedKFold(n_splits=n_splits)
     y = pd.DataFrame(labels)  # 1D nparray of 1s and 0s to indicate ErrPs
 
-    # Make a new matplotlib figure and decorate it
+    # # Make a new matplotlib figure and decorate it
     plt.figure(4, dpi=100)
 
     # Decorate the figure
@@ -66,93 +69,81 @@ def main():
     plt.xlim([0, 1])
     plt.ylim([0, 1])
 
-    # Initialize lists
-    X_train, X_test, y_train, y_test, y_pred = None, None, None, None, None
-    c1_preds, c2_preds, c3_preds, c4_preds = [], [], [], []
-    lowest_text_index_len = 999999
+    print(f'Training and splitting data...')
+    X_train_lst = []  # Not used
+    y_train_lst = []  # Not used
 
-    # Split the data and get the prediction for each channel
-    for train_index, test_index in skf.split(X3, y):
-        X_train, X_test = X3.iloc[train_index], X3.iloc[test_index]
-        y_train, y_test = y.iloc[train_index], y.iloc[test_index]
-        y_train = np.array(y_train).ravel()
-        y_test = np.array(y_test).ravel()
+    for i, (train_index, test_index) in enumerate(skf.split(X3, y)):
+        X_train, X_test = np.array(X3.iloc[train_index]), \
+                          np.array(X3.iloc[test_index])
+        y_train, y_test = np.array(y.iloc[train_index]).ravel(), \
+                          np.array(y.iloc[test_index]).ravel()
 
-        if len(test_index) < lowest_text_index_len:
-            lowest_text_index_len = len(test_index)
+        # Get positive and negative occurrences
+        pos = np.where(y_train == 1)[0]
+        neg = np.where(y_train == 0)[0]
+        # print(f'{i=}, pos occurrences = {pos.shape[0]} ---- neg occurrences ='
+        #       f' {neg.shape[0]}')
 
-        # Get the y prediction for each channel
-        for channel_index, channel in enumerate(channels):
-            # Fit the data to the classifier
-            classifier.fit(X_train[[channel]], y_train)
+        # Get X values that have ERN and do not have ERN
+        Xpos = X_train[pos, :]
+        Xneg = X_train[neg, :]
 
-            # Get the prediction
-            y_pred = classifier.predict(X_test[[channel]])
-            if channel_index == 1:
-                c1_preds.append(y_pred)
-            if channel_index == 2:
-                c2_preds.append(y_pred)
-            if channel_index == 3:
-                c3_preds.append(y_pred)
-            if channel_index == 4:
-                c4_preds.append(y_pred)
+        np.vstack((Xpos, Xneg))  # Stack all positive X's on the negative X's
 
-    #
-    # # Cut off any entries to make the shapes match in order to get the mean
-    # c1_preds_array = np.zeros(lowest_text_index_len)
-    # c2_preds_array = np.zeros(lowest_text_index_len)
-    # c4_preds_array = np.zeros(lowest_text_index_len)
-    # c3_preds_array = np.zeros(lowest_text_index_len)
-    #
-    #
-    #
-    # for index, entry in enumerate(c1_preds):
-    #     np.hstack((c1_preds_array.T, entry[:lowest_text_index_len]))
-    # for index, entry in enumerate(c2_preds):
-    #     np.hstack((c2_preds_array.T, entry[:lowest_text_index_len]))
-    # for index, entry in enumerate(c3_preds):
-    #     np.hstack((c3_preds_array.T, entry[:lowest_text_index_len]))
-    # for index, entry in enumerate(c4_preds):
-    #     np.hstack((c4_preds_array.T, entry[:lowest_text_index_len]))
-    #
-    # print(f'{c1_preds_array.shape=}')
-    # avg_c1_preds = np.mean(c1_preds, axis=1)
-    # avg_c2_preds = np.mean(c2_preds, axis=1)
-    # avg_c3_preds = np.mean(c3_preds, axis=1)
-    # avg_c4_preds = np.mean(c4_preds, axis=1)
+        ds_idx = Xneg.shape[0]  # Get index where we will begin downsampling
 
-    # Since the above code doesn't work, let the average signal of each
-    # channel be represented by the first entry of the prediction per channel
-    avg_c1_preds = c1_preds[0][:lowest_text_index_len]
-    avg_c2_preds = c1_preds[1][:lowest_text_index_len]
-    avg_c3_preds = c1_preds[2][:lowest_text_index_len]
-    avg_c4_preds = c1_preds[3][:lowest_text_index_len]
+        # Sample Xneg array len(XPos) many times
+        rand_ds_idx = np.random.randint(0, ds_idx, len(Xpos))
 
-    # Get the fpr and tpr for each channel
-    for channel_index, channel_pred in enumerate(
-            [avg_c1_preds, avg_c2_preds, avg_c3_preds,
-             avg_c4_preds]):
-        y_pred_svm = classifier.decision_function(X_test[[channels[
-                                                              channel_index]]])
-        fpr, tpr, threshold = roc_curve(y_test, channel_pred)
-        area_under_curve = auc(fpr, tpr)
+        # Copy the array with the equal pos and equal downsampled neg values
+        X_train1 = np.vstack((Xpos, Xneg[rand_ds_idx]))
 
-        svm_fpr, svm_tpr, threshold = roc_curve(y_test, channel_pred,
-                                                y_pred_svm)
-        area_under_curve_svm = auc(svm_fpr, svm_tpr)
+        ypos = np.ones(Xpos.shape[0])
+        yneg = np.zeros(Xpos.shape[0])
 
-        # Plot the lines
-        plt.plot(svm_fpr, svm_tpr, linestyle='-', label=f'SVM auc for channel {channels[channel_index]}, svm_auc={area_under_curve_svm}')
-        plt.plot(fpr, tpr, marker='.', label=f'Logistical auc for channel '
-                                             f'{channels[channel_index]}, '
-                                             f'auc={area_under_curve}')
+        y_train1 = np.concatenate((ypos, yneg), axis=0)
 
-    # label = f'SVM auc for channel {channel_index}, auc ='
-    # f'({round(area_under_curve_svm, 2)})'
+        # Apply weights of positive : neg event to the classifier
+        pos_weight = Xpos.shape[0]
+        neg_weight = Xneg.shape[0]
+        clf.class_weight = {0: neg_weight, 1: pos_weight}
+
+        # Fit the data to the classifier
+        clf.fit(X_train1, y_train1)
+
+        # Save the values used to train the classifier
+        X_train_lst.append(X_train1)
+        y_train_lst.append(y_train1)
+
+    # Predict using the entire dataset
+    y_pred = clf.predict(X3)
+    fpr, tpr, threshold = roc_curve(y, y_pred)
+    area_under_curve = auc(fpr, tpr)
+
+    y_pred_svm = clf.decision_function(X3)
+    svm_fpr, svm_tpr, threshold = roc_curve(y, y_pred_svm)
+    svm_area_under_curve = auc(svm_fpr, svm_tpr)
+
+    # Plot ROC data
+    plt.plot(svm_fpr, svm_tpr, linestyle='-',
+             label=f'{chnl} (svm_auc = %.3f)' % svm_area_under_curve)
+    plt.plot(fpr, tpr, marker='.', label=f'{chnl} (auc = %.3f)' %
+                                         area_under_curve)
+
     plt.legend(loc='lower right')
 
     plt.show()
 
+
+ #y_pred = clf.predict(X_test)
+
+        # # Test accuracy
+        # acc = accuracy_score(y_test, y_pred)
+        # print('acc = %.2f' % acc)
+ # # Convert to np array for compatibility issues
+ #        y_train = np.array(y_train).ravel()
+ #        y_test = np.array(y_test).ravel()
 
 def load_eeg_pkl(filepath: str = None, return_all: bool = False):
     """Load EEG data from pkl file
@@ -211,73 +202,6 @@ def load_eeg_pkl(filepath: str = None, return_all: bool = False):
                trial_indexes, \
                dataset_tags, subject_tags, channels
     return ern_epochs_avg, non_ern_epochs_avg, dataset, labels, event_ids, channels
-
-
-def find_best_accuracy(target_acc: float, epoch_all_channels, channels,
-                       labels, C_value_bound: int,
-                       kernel="linear", train_statically=False, test_size=None):
-    """Finds the highest-accuracy models for each channel of the epochs and
-    returns a list of y_pred objects representative of each channel to use for
-    plotting """
-    print('Training svm models')
-
-    channels_dict = {}
-    for i in np.arange(4):
-        channels_dict.update({i: channels[i]})
-
-    # Store the y predic tion for each model
-    y_pred_list = []
-    index = 0
-    # Iterate through each set for each channel
-    for epoch_set in epoch_all_channels:
-        C_value = C_value_bound
-        y_pred = None
-        if train_statically:
-            # The accuracy will not change if the data is the same every
-            # time, regardless of the C value
-            acc, y_pred = train_svm(True, epoch_set, labels, kernel, C_value)
-        else:
-            acc = 0
-            # Increase the C value to find the best C if using split data
-            while acc < target_acc:
-                acc, y_pred = train_svm(False, epoch_set, labels, kernel,
-                                        C_value, test_size)
-                C_value += 1
-        print(f'{acc=}, channel={channels_dict.get(index)}, {C_value=}')
-
-        y_pred_list.append(y_pred)
-        index += 1
-
-    print('Trained svm models')
-    return y_pred_list
-
-
-def train_svm(train_statically: bool, epoch_set, labels, kernel: str,
-              C_value: int, test_size: float = None):
-    """Statically train the SVM classifier by using the same data each time.
-    Should yield the same optimal C_value every single time
-    """
-    if train_statically:
-        x_train = epoch_set[:200].reshape(-1, 1)
-        x_test = epoch_set[:200].reshape(-1, 1)
-        y_train = np.ravel(labels[:200].reshape(-1, 1))
-        y_test = np.ravel(labels[:200].reshape(-1, 1))
-    else:
-        x_train, x_test, y_train, y_test = train_test_split(
-            epoch_set.reshape(-1, 1),
-            labels,
-            test_size=test_size)
-
-    # Make the classifier
-    classifier = svm.SVC(kernel=kernel, C=C_value)
-    classifier.fit(x_train, y_train)
-
-    # Predict the value
-    y_pred = classifier.predict(x_test)
-
-    # Compare the accuracy of the prediction to an actual variable
-    accuracy = metrics.accuracy_score(y_test, y_pred)
-    return accuracy, y_pred
 
 
 if __name__ == "__main__":
