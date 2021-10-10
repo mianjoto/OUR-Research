@@ -14,59 +14,29 @@ from sklearn.model_selection import StratifiedKFold
 
 
 def main():
-    ern_avg, non_ern_avg, dataset, labels, event_ids, channels = load_eeg_pkl()
+    ern_avg, non_ern_avg, dataset, labels, channels = load_eeg_pkl()
 
     # The channel we will observe is Cn
     chnl, chnl_idx = channels[-1], (len(channels) - 1)
 
-    # Plot the data
-    # errp_labels = ('ErrP Amplitude Average over 200 Samples', 'ErrP Data',
-    #                'Amplitude')
-    # non_errp_labels = ('Non-ErrP Amplitude Average over 200 Samples',
-    #                    'Non-ErrP Data', 'Amplitude')
-    # plot_eeg(ern_avg, errp_labels, fig_num=1, columns=channels, show=True)
-    # plot_eeg(ern_avg, non_errp_labels, fig_num=2, columns=channels, show=True)
+    # Plot signal averages
+    errp_labels = ('ErrP Signal Average', 'ms', 'µV')
+    non_errp_labels = ('Non-ErrP Signal Average', 'ms', 'µv')
 
+    plot_eeg(ern_avg, errp_labels, clr_pal='bright', fig_num=1,
+             columns=channels, show=True)
+    plot_eeg(non_ern_avg, non_errp_labels, clr_pal='bright', fig_num=2,
+             columns=channels, show=True)
+
+    # Fit data to classifier and plot ROC curve results
     X = pd.DataFrame(dataset[:, chnl_idx, :])
-
-    # Initialize the classifier
-    skf_bounds = (2, 200)
-    clf = svm.SVC(kernel='rbf', C=5)
     y = pd.DataFrame(labels)  # 1D nparray of 1s and 0s to indicate ErrPs
 
-    # # Make a new matplotlib figure and decorate it
-    plt.figure(4, dpi=100)
+    skf_bounds = (2, 5)  # Bounds of how many splits for SKF
+    clf = svm.SVC(kernel='rbf', C=5)
 
-    # Decorate the figure
-    plt.title('Receiver Operating Characteristic')
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-    plt.plot([0, 1], [0, 1], 'r--')
-    plt.xlim([0, 1])
-    plt.ylim([0, 1])
-
-    clf, svm_roc, logistic_roc = best_n_splits(clf, skf_bounds, X, y)
-    fpr, tpr, log_auc = logistic_roc
-    svm_fpr, svm_tpr, svm_auc = svm_roc
-
-    # # Train and split the data
-    # X_train_lst, X_test, y_train_lst, y_test = skf_split_train(n_splits, X3, y)
-    # clf = svm_fit_clf(clf, (X_train_lst, y_train_lst))
-    #
-    # # Get ROC using the entire dataset
-    # logistic_roc, svm_roc = get_roc_data(clf, X3, y)
-    # fpr, tpr, area_under_curve = logistic_roc
-    # svm_fpr, svm_tpr, svm_area_under_curve = svm_roc
-
-    # Plot ROC data
-    plt.plot(svm_fpr, svm_tpr, linestyle='-',
-             label=f'{chnl} (svm_auc = %.3f)' % svm_auc)
-    plt.plot(fpr, tpr, marker='.', label=f'{chnl} (auc = %.3f)' %
-                                         log_auc)
-
-    plt.legend(loc='lower right')
-
-    plt.show()
+    clf, svm_roc, logistic_roc, n_folds = best_n_splits(clf, skf_bounds, X, y)
+    plot_roc_curve(chnl, n_folds, skf_bounds, logistic_roc, svm_roc, 3)
 
 
 def load_eeg_pkl(filepath: str = None, return_all: bool = False):
@@ -125,16 +95,22 @@ def load_eeg_pkl(filepath: str = None, return_all: bool = False):
                non_ern_epochs_avg, labels, labels_df, event_ids, trial_tags, \
                trial_indexes, \
                dataset_tags, subject_tags, channels
-    return ern_epochs_avg, non_ern_epochs_avg, dataset, labels, event_ids, channels
+    return ern_epochs_avg, non_ern_epochs_avg, dataset, labels, channels
 
 
-def plot_eeg(data: pd.DataFrame, labels: tuple, fig_num: int = None,
-             columns=None, show: bool = None):
+def plot_eeg(data: pd.DataFrame, labels: tuple, clr_pal: str = None,
+             fig_num: int = None, columns=None, show: bool = None):
     title, xlabel, ylabel = labels
 
     X = pd.DataFrame(data.T, columns=columns)
-    plt.figure(1)
+    sns.set_style('whitegrid')
+    plt.figure(fig_num, dpi=200)
+    sns.set_palette(clr_pal)
     sns.lineplot(data=X, dashes=False)
+    sns.despine()
+
+    plt.legend(title='Channels', bbox_to_anchor=(1.03, 1), shadow=True,
+               facecolor='white', fontsize=8, title_fontsize=12)
     plt.title(title)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
@@ -143,9 +119,38 @@ def plot_eeg(data: pd.DataFrame, labels: tuple, fig_num: int = None,
         plt.show()
 
 
-def skf_split_train(n_splits: int, X: pd.DataFrame,
-                    y: pd.DataFrame) -> \
-        Tuple[list, np.ndarray, list, np.ndarray]:
+def plot_roc_curve(channel: str, n_folds: int, bounds: tuple,
+                   logistic_roc: tuple, svm_roc: tuple,
+                   fig_num: int = None, show: bool = True):
+    # Make a new matplotlib figure and decorate it
+    sns.set_palette('bright')
+    plt.figure(fig_num, dpi=200)
+    plt.title('Receiver Operating Characteristic')
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.plot([0, 1], [0, 1], 'r--')
+    plt.xlim([0, 1])
+    plt.ylim([0, 1])
+
+    # Unpack data
+    fpr, tpr, log_auc = logistic_roc
+    svm_fpr, svm_tpr, svm_auc = svm_roc
+
+    # Plot ROC data
+    plt.plot(svm_fpr, svm_tpr, linestyle='-',
+             label=f'{channel} (svm_auc = %.3f)' % svm_auc)
+    plt.plot(fpr, tpr, marker='.', label=f'{channel} (auc = %.3f)' %
+                                         log_auc)
+    plt.legend(title=f'Area under curve for SKF with {n_folds} folds from '
+                     f'bounds {str(bounds)}',
+               shadow=True, facecolor='white', loc='lower right',
+               fontsize=8, title_fontsize=12)
+    if show:
+        plt.show()
+
+
+def skf_split_train(n_splits: int, X: pd.DataFrame, y: pd.DataFrame) -> \
+                                    Tuple[list, np.ndarray, list, np.ndarray]:
     """Returns a tuple that contains a list of X_train1 and y_train1 objects to
     use to later train a classifier
     """
@@ -244,7 +249,7 @@ def get_roc_data(clf: svm.SVC, X, y) -> Tuple[tuple, tuple]:
 
 
 def best_n_splits(clf, fold_bounds: tuple, X, y) -> Tuple[svm.SVC, tuple,
-                                                          tuple]:
+                                                          tuple, int]:
     """Return the classifier that yields the highest tpr after iterating
     through skf folds as many times as bounded by the parameters. Upper bound
     is not exclusive. We test for SVM accuracy as this shows the efficiency
@@ -263,9 +268,8 @@ def best_n_splits(clf, fold_bounds: tuple, X, y) -> Tuple[svm.SVC, tuple,
                                                                    y)
         clf = svm_fit_clf(clf, (X_train_lst, y_train_lst))
 
-        # Get ROC using the entire dataset
+        # Get SVM ROC using the entire dataset
         logistic_roc, svm_roc = get_roc_data(clf, X, y)
-        fpr, tpr, area_under_curve = logistic_roc
         svm_fpr, svm_tpr, svm_area_under_curve = svm_roc
 
         # Store classifier if it yields the highest svm auc
@@ -277,7 +281,7 @@ def best_n_splits(clf, fold_bounds: tuple, X, y) -> Tuple[svm.SVC, tuple,
 
     print(f'Best number of folds for this trial is {best_n_folds} folds')
     # Return the best classifier and its associated svm auc and logistic auc
-    return best_clf, best_svm_roc, best_log_roc
+    return best_clf, best_svm_roc, best_log_roc, best_n_folds
 
 
 if __name__ == "__main__":
